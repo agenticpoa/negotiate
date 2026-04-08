@@ -1,0 +1,4 @@
+anthropic>=0.40.0
+fpdf2>=2.8.0
+apoa>=0.1.0
+python-dotenv>=1.0.0
