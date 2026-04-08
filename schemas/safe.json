@@ -1,0 +1,18 @@
+{
+    "protocol": "apoa-alternating-offers",
+    "version": "0.1",
+    "based_on": "Rubinstein Alternating Offers (Econometrica, 1982), multi-issue extension per Fatima/Kraus/Wooldridge (Cambridge, 2014)",
+    "negotiation_id": "neg_<uuid>",
+    "document_type": "safe-agreement",
+    "issues": {
+        "valuation_cap": {"type": "number", "label": "Valuation Cap ($)"},
+        "discount_rate": {"type": "number", "label": "Discount Rate (decimal)"},
+        "pro_rata": {"type": "boolean", "label": "Pro-Rata Rights"},
+        "mfn": {"type": "boolean", "label": "Most Favored Nation"}
+    },
+    "rules": {
+        "max_rounds": 10,
+        "first_mover": "founder",
+        "offer_timeout_seconds": 300
+    }
+}
