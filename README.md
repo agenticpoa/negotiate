@@ -4,6 +4,10 @@ AI agents that negotiate YC SAFEs. You set the boundaries. They find the deal.
 
 Every offer is cryptographically signed, constraint-validated, and logged to a tamper-proof audit trail. When the agents agree, you review the terms and draw your signature in the browser. Out comes an executed PDF with the full negotiation history.
 
+## Demo
+
+[![AI Agents Negotiate a YC SAFE](https://img.youtube.com/vi/l_wUpE8daOU/maxresdefault.jpg)](https://youtu.be/l_wUpE8daOU)
+
 ## Try it in 60 seconds
 
 No sshsign account needed. Just watch two agents negotiate:
