@@ -394,7 +394,7 @@ def _collect_all_signatures(
 
     signers = []
 
-    for role in ["founder", "investor"]:
+    for role in ["founder", "investor", "party"]:
         pending_file = output_dir / f"{schema.negotiation_id}_{role}_pending.txt"
         if not pending_file.exists():
             continue
@@ -405,6 +405,7 @@ def _collect_all_signatures(
 
         try:
             result = get_envelope(host=args.sshsign_host, pending_id=pending_id)
+            logger.debug("get_envelope %s: %s", pending_id, {k: v for k, v in result.items() if k != "envelope"})
             if result.get("status") == "approved":
                 envelope_data = result.get("envelope", {})
                 signers.append({
@@ -418,10 +419,11 @@ def _collect_all_signatures(
                 if not quiet:
                     print(f"  {GREEN}{role}: signed{RESET}")
             else:
+                logger.debug("get_envelope %s status: %s", pending_id, result.get("status"))
                 if not quiet:
                     print(f"  {YELLOW}{role}: pending{RESET}")
         except Exception as e:
-            logger.debug("Could not fetch envelope for %s: %s", role, e)
+            logger.warning("Could not fetch envelope for %s (%s): %s", role, pending_id, e)
             if not quiet:
                 print(f"  {DIM}{role}: unavailable{RESET}")
 
@@ -450,8 +452,8 @@ def _poll_and_finalize(
 
             # Check how many pending files exist (expected signers)
             expected = 0
-            for role in ["founder", "investor"]:
-                pf = output_dir / f"{schema.negotiation_id}_{role}_pending.txt"
+            for check_role in ["founder", "investor", "party"]:
+                pf = output_dir / f"{schema.negotiation_id}_{check_role}_pending.txt"
                 if pf.exists():
                     expected += 1
 
@@ -461,7 +463,7 @@ def _poll_and_finalize(
 
             # Show status
             signed = [s["role"] for s in signers]
-            pending = [r for r in ["founder", "investor"]
+            pending = [r for r in ["founder", "investor", "party"]
                        if (output_dir / f"{schema.negotiation_id}_{r}_pending.txt").exists()
                        and r not in signed]
             if pending:
@@ -576,7 +578,12 @@ def handle_signing(
                 print(f"  {TEAL}Session:{RESET}  {session_id}")
 
             # Save pending_id so finalize can find both parties' signatures
-            pending_file = output_dir / f"{schema.negotiation_id}_{role or 'party'}_pending.txt"
+            # In local mode (no role), create pending files for both roles
+            # since this process signs for the founder
+            if role:
+                pending_file = output_dir / f"{schema.negotiation_id}_{role}_pending.txt"
+            else:
+                pending_file = output_dir / f"{schema.negotiation_id}_founder_pending.txt"
             pending_file.write_text(pending_id)
 
             approval_url = sign_result.get("approval_url")
