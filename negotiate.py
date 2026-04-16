@@ -555,7 +555,7 @@ def handle_signing(
             "founder_company": args.company_name,
             "investor_name": args.investor_name,
             "investor_firm": args.investor_firm,
-            "_signer_role": (role or "signer").capitalize(),
+            "_signer_role": (role or "founder").capitalize(),
         }
 
         sign_result = sign_document(
