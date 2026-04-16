@@ -22,7 +22,7 @@ class ClaudeAgent(NegotiationAgent):
         role: str,
         constraints: dict,
         prompt_path: str,
-        model: str = "claude-sonnet-4-20250514",
+        model: str = "claude-sonnet-4-6",
     ):
         super().__init__(role, constraints, prompt_path)
         self.client = anthropic.AsyncAnthropic()
