@@ -59,6 +59,26 @@ def _fill_color(pdf: FPDF, rgb: tuple) -> None:
     pdf.set_fill_color(*rgb)
 
 
+def _sanitize_text(text: str) -> str:
+    """Replace Unicode characters that Helvetica (fallback font) can't render."""
+    if not text:
+        return text
+    replacements = {
+        "\u2014": "--",   # em dash
+        "\u2013": "-",    # en dash
+        "\u2018": "'",    # left single quote
+        "\u2019": "'",    # right single quote
+        "\u201c": '"',    # left double quote
+        "\u201d": '"',    # right double quote
+        "\u2026": "...",  # ellipsis
+        "\u2022": "*",    # bullet
+        "\u00a0": " ",    # non-breaking space
+    }
+    for src, dst in replacements.items():
+        text = text.replace(src, dst)
+    return text
+
+
 def _rule(pdf: FPDF, y: float | None = None) -> None:
     """Draw a subtle horizontal rule."""
     _draw_color(pdf, RULE)
@@ -537,7 +557,7 @@ class SAFETemplate(DocumentTemplate):
             # Message
             _font(pdf, "I", 8.5)
             _color(pdf, BODY)
-            pdf.multi_cell(0, 4.5, f'"{message}"')
+            pdf.multi_cell(0, 4.5, f'"{_sanitize_text(message)}"')
             _color(pdf, DARK)
             pdf.ln(4)
 
@@ -550,12 +570,12 @@ class SAFETemplate(DocumentTemplate):
         pdf.set_right_margin(self.MARGIN_RIGHT)
         pdf.add_page()
 
-        company = self.parties["founder"]["company"]
-        investor_name = self.parties["investor"]["name"]
-        investor_firm = self.parties["investor"].get("firm", "")
+        company = _sanitize_text(self.parties["founder"]["company"])
+        investor_name = _sanitize_text(self.parties["investor"]["name"])
+        investor_firm = _sanitize_text(self.parties["investor"].get("firm", ""))
         investor_label = investor_firm or investor_name
-        founder_name = self.parties["founder"]["name"]
-        founder_title = self.parties["founder"]["title"]
+        founder_name = _sanitize_text(self.parties["founder"]["name"])
+        founder_title = _sanitize_text(self.parties["founder"]["title"])
         cap = self.terms["valuation_cap"]
         discount = self.terms["discount_rate"]
         pro_rata = self.terms["pro_rata"]
