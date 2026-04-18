@@ -106,6 +106,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--expires", default="2026-05-02T23:59:59Z")
     parser.add_argument("--principal-id", default="did:apoa:principal")
     parser.add_argument("--schema", default="schemas/safe.json")
+    parser.add_argument("--service", default="safe-agreement",
+                        help="Service identifier for APOA token scope (e.g. safe:acme:neg_abc123)")
     return parser.parse_args()
 
 
@@ -181,7 +183,7 @@ def create_token_for_role(client, role: str, args, private_key, tokens_dir: Path
         agent=Agent(id=agent_id, name=agent_name),
         services=[
             ServiceAuthorization(
-                service="safe-agreement",
+                service=args.service,
                 scopes=["offer:submit", "offer:accept", "document:sign"],
                 constraints=constraints,
             )
