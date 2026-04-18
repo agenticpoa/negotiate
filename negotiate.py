@@ -43,9 +43,100 @@ from sshsign_client import (
     sign_document,
 )
 
+from dataclasses import dataclass, field
+
 logger = logging.getLogger(__name__)
 
 PROMPTS_DIR = Path(__file__).parent / "prompts"
+
+
+@dataclass
+class NegotiationConfig:
+    """Typed configuration for library-mode negotiation.
+
+    Use this instead of argparse.Namespace when calling negotiate as a library.
+    Call to_namespace() to convert to the format run_local/run_distributed expect.
+    """
+    negotiate_repo: Path
+    negotiation_id: str
+    founder_token_path: str
+    investor_token_path: str
+    founder_pubkey_path: str
+    investor_pubkey_path: str
+    company_name: str
+    founder_name: str
+    investor_name: str
+    founder_title: str = ""
+    investor_firm: str = ""
+    investment_amount: float = 500_000.0
+    sshsign_host: str = "sshsign.dev"
+    no_sshsign: bool = False
+    output_dir: str = "output"
+    signing_key_id: str = ""
+    founder_signing_key_id: str = ""
+    investor_signing_key_id: str = ""
+    founder_require_signature: bool = True
+    investor_require_signature: bool = True
+    poll: bool = True
+    poll_timeout: int = 300
+    json_events: bool = False
+    date: str = ""
+    role: str = ""
+    session_id: str = ""
+    verbose: bool = False
+
+    def to_namespace(self) -> argparse.Namespace:
+        repo = Path(self.negotiate_repo)
+        return argparse.Namespace(
+            schema=str(repo / "schemas" / "safe.json"),
+            role=self.role,
+            negotiation_id=self.negotiation_id,
+            session_id=self.session_id or f"session_{self.negotiation_id}",
+            founder_token=self.founder_token_path,
+            investor_token=self.investor_token_path,
+            founder_pubkey=self.founder_pubkey_path,
+            investor_pubkey=self.investor_pubkey_path,
+            no_sshsign=self.no_sshsign,
+            sshsign_host=self.sshsign_host,
+            output_dir=self.output_dir,
+            company_name=self.company_name,
+            founder_name=self.founder_name,
+            founder_title=self.founder_title,
+            investor_name=self.investor_name,
+            investor_firm=self.investor_firm,
+            investment_amount=self.investment_amount,
+            date=self.date,
+            signing_key_id=self.signing_key_id or self.founder_signing_key_id,
+            founder_signing_key_id=self.founder_signing_key_id,
+            investor_signing_key_id=self.investor_signing_key_id,
+            founder_require_signature=self.founder_require_signature,
+            investor_require_signature=self.investor_require_signature,
+            poll=self.poll,
+            poll_timeout=self.poll_timeout,
+            json_events=self.json_events,
+            verbose=self.verbose,
+            finalize="",
+            founder_cap_min=0, founder_cap_max=0,
+            founder_discount_min=0, founder_discount_max=0,
+            founder_pro_rata_required=False, founder_mfn_required=False,
+            investor_cap_min=0, investor_cap_max=0,
+            investor_discount_min=0, investor_discount_max=0,
+            investor_pro_rata_required=False, investor_mfn_required=False,
+        )
+
+
+async def run_negotiation(config: NegotiationConfig) -> None:
+    """Library entry point. Converts config to Namespace and runs the negotiation."""
+    ns = config.to_namespace()
+    original_cwd = os.getcwd()
+    os.chdir(str(config.negotiate_repo))
+    try:
+        if config.role:
+            await run_distributed(ns)
+        else:
+            await run_local(ns)
+    finally:
+        os.chdir(original_cwd)
 MAX_VALIDATION_RETRIES = 3
 
 # ANSI color codes
