@@ -128,6 +128,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--poll-timeout", type=int, default=0)
     parser.add_argument("--finalize", default="")
     parser.add_argument("--verbose", "-v", action="store_true")
+    parser.add_argument("--json-events", action="store_true",
+                        help="Emit NDJSON offer events on stdout alongside ANSI display")
 
     # Signature settings per party
     parser.add_argument("--founder-require-signature", type=lambda v: v.lower() in ("true", "1", "yes"),
@@ -237,6 +239,33 @@ def display_offer(
             print(f"    {RED}- {v}{RESET}")
 
     print()
+
+
+def emit_json_event(out, offer: dict, role: str, round_num: int) -> None:
+    """Write a single NDJSON offer event."""
+    event = {
+        "type": offer.get("type", "offer"),
+        "round": round_num,
+        "party": role,
+        "terms": offer.get("terms"),
+        "message": offer.get("message", ""),
+        "immudb_tx": offer.get("immudb_tx"),
+        "timestamp": offer.get("timestamp", ""),
+    }
+    out.write(json.dumps(event) + "\n")
+    out.flush()
+
+
+def emit_outcome_event(out, result: str, terms: dict | None, duration_seconds: float) -> None:
+    """Write an NDJSON outcome event at the end of a negotiation."""
+    event = {
+        "type": "outcome",
+        "result": result,
+        "terms": terms,
+        "duration_seconds": duration_seconds,
+    }
+    out.write(json.dumps(event) + "\n")
+    out.flush()
 
 
 def _constraint_hint(field: str, value, constraints: dict) -> str:
@@ -801,6 +830,9 @@ async def run_local(args: argparse.Namespace) -> None:
             previous_terms=previous_terms,
         )
 
+        if getattr(args, "json_events", False):
+            emit_json_event(sys.stdout, offer, current_role, state.current_round)
+
         if offer.get("terms"):
             previous_terms = offer["terms"]
 
@@ -813,6 +845,10 @@ async def run_local(args: argparse.Namespace) -> None:
     elapsed = time.monotonic() - negotiation_start
 
     display_negotiation_summary(state, elapsed)
+
+    if getattr(args, "json_events", False):
+        agreed = state.agreed_terms() if state.outcome == "accepted" else None
+        emit_outcome_event(sys.stdout, state.outcome, agreed, elapsed)
 
     if state.outcome == "accepted":
         handle_agreement(args, schema, state, elapsed)
