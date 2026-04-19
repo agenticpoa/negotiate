@@ -161,6 +161,37 @@ class TestAgreedTerms:
         assert terms is not None
         assert terms["valuation_cap"] == 9_000_000
 
+    def test_accept_with_mismatched_terms_rejected(self, state, schema):
+        """An accept that carries terms different from the offer being accepted is invalid."""
+        offer = _make_offer(valuation_cap=9_000_000, discount_rate=0.15, pro_rata=True)
+        state.record_offer(offer)
+        accept = {
+            "type": "accept",
+            "from": "investor",
+            "terms": {"valuation_cap": 9_000_000, "discount_rate": 0.20, "pro_rata": False, "mfn": False},
+        }
+        valid, reason = validate_offer_structure(accept, schema, previous_offer=offer)
+        assert not valid, "Accept with different terms should be rejected"
+        assert "mismatch" in reason.lower()
+
+    def test_accept_with_matching_terms_passes(self, state, schema):
+        offer = _make_offer(valuation_cap=9_000_000, discount_rate=0.15, pro_rata=True)
+        state.record_offer(offer)
+        accept = {
+            "type": "accept",
+            "from": "investor",
+            "terms": {"valuation_cap": 9_000_000, "discount_rate": 0.15, "pro_rata": True, "mfn": False},
+        }
+        valid, reason = validate_offer_structure(accept, schema, previous_offer=offer)
+        assert valid
+
+    def test_accept_without_terms_still_passes(self, state, schema):
+        offer = _make_offer(valuation_cap=9_000_000)
+        state.record_offer(offer)
+        accept = {"type": "accept", "from": "investor"}
+        valid, reason = validate_offer_structure(accept, schema, previous_offer=offer)
+        assert valid
+
     def test_no_agreed_terms_on_reject(self, state):
         state.record_offer({"type": "reject", "from": "founder"})
         assert state.agreed_terms() is None

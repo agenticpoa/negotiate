@@ -852,7 +852,9 @@ async def run_local(args: argparse.Namespace) -> None:
             raw_offer["negotiation_id"] = schema.negotiation_id
             raw_offer["round"] = state.current_round
 
-            valid, reason = validate_offer_structure(raw_offer, schema)
+            valid, reason = validate_offer_structure(
+                raw_offer, schema, previous_offer=state.last_offer(),
+            )
             if not valid:
                 logger.warning("Structure validation failed: %s (attempt %d)", reason, attempt + 1)
                 history.append({

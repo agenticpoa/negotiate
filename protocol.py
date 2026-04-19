@@ -97,7 +97,9 @@ class NegotiationState:
         return self.history[-2]["terms"]
 
 
-def validate_offer_structure(offer: dict, schema: ProtocolSchema) -> tuple[bool, str]:
+def validate_offer_structure(
+    offer: dict, schema: ProtocolSchema, previous_offer: dict | None = None,
+) -> tuple[bool, str]:
     """Validate that an offer has all required fields with correct types."""
     if "type" not in offer:
         return False, "Missing 'type' field"
@@ -105,8 +107,16 @@ def validate_offer_structure(offer: dict, schema: ProtocolSchema) -> tuple[bool,
     if offer["type"] not in VALID_OFFER_TYPES:
         return False, f"Invalid offer type: {offer['type']}. Must be one of {VALID_OFFER_TYPES}"
 
-    # accept and reject don't need terms
     if offer["type"] in ("accept", "reject"):
+        # If the accept carries terms, they must match the offer being accepted
+        if offer["type"] == "accept" and "terms" in offer and previous_offer and "terms" in previous_offer:
+            for key in previous_offer["terms"]:
+                if offer["terms"].get(key) != previous_offer["terms"][key]:
+                    return False, (
+                        f"Accept terms mismatch on '{key}': "
+                        f"accepting {previous_offer['terms'][key]} "
+                        f"but accept says {offer['terms'].get(key)}"
+                    )
         return True, ""
 
     if "terms" not in offer:
