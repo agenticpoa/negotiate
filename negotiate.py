@@ -711,6 +711,16 @@ def handle_signing(
             else:
                 print(f"\n  Approve: ssh {args.sshsign_host} approve --id {pending_id}")
 
+            if getattr(args, "json_events", False):
+                signing_event = {
+                    "type": "signing",
+                    "pending_id": pending_id,
+                    "approval_url": approval_url,
+                    "requires_signature": sign_result.get("requires_signature", False),
+                }
+                sys.stdout.write(json.dumps(signing_event) + "\n")
+                sys.stdout.flush()
+
             if args.poll and pending_id:
                 _poll_and_finalize(
                     args, schema, state, terms, parties,
