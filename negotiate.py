@@ -253,12 +253,9 @@ def load_apoa_token(token_path: str, pubkey_path: str) -> tuple:
         raise ValueError(f"Invalid APOA token: {result.errors}")
 
     token = result.token
-    service = next(
-        (s for s in token.definition.services if s.service == "safe-agreement"),
-        None,
-    )
-    if not service:
-        raise ValueError("Token has no 'safe-agreement' service authorization")
+    if not token.definition.services:
+        raise ValueError("Token has no service authorizations")
+    service = token.definition.services[0]
 
     return token, service.constraints or {}
 
