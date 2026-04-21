@@ -84,6 +84,11 @@ class NegotiationConfig:
     role: str = ""
     session_id: str = ""
     verbose: bool = False
+    # Which party the human user signs as. Separate from `role` (which
+    # dispatches distributed-mode turn-taking) so that local mode can still
+    # record the correct signer on the PDF when the user plays investor.
+    # Accepted values: "", "founder", "investor". Empty = defaults to founder.
+    signer_role: str = ""
 
     def to_namespace(self) -> argparse.Namespace:
         repo = Path(self.negotiate_repo)
@@ -122,6 +127,7 @@ class NegotiationConfig:
             investor_cap_min=0, investor_cap_max=0,
             investor_discount_min=0, investor_discount_max=0,
             investor_pro_rata_required=False, investor_mfn_required=False,
+            signer_role=self.signer_role,
         )
 
 
@@ -174,6 +180,12 @@ def parse_args() -> argparse.Namespace:
 
     # Role (from .env or CLI)
     parser.add_argument("--role", default=_env("ROLE"), choices=["", "founder", "investor"])
+    parser.add_argument(
+        "--signer-role",
+        default=_env("SIGNER_ROLE"),
+        choices=["", "founder", "investor"],
+        help="Which party the human user signs as (local mode). Defaults to 'founder'.",
+    )
 
     # APOA token paths
     parser.add_argument("--founder-token", default="")
@@ -661,6 +673,13 @@ def handle_signing(
 
     session_id = getattr(args, "session_id", "") or ""
     role = getattr(args, "role", "") or ""
+    # signer_role is the label that lands on the PDF. In distributed mode,
+    # it's typically the same as `role`. In local mode (role="") it lets a
+    # caller record that the human user is signing as the investor side
+    # (used by the claw-negotiate dual-role demo).
+    signer_role = (getattr(args, "signer_role", "") or role or "founder").lower()
+    if signer_role not in ("founder", "investor"):
+        signer_role = "founder"
 
     try:
         sign_metadata = {
@@ -672,7 +691,7 @@ def handle_signing(
             "founder_company": args.company_name,
             "investor_name": args.investor_name,
             "investor_firm": args.investor_firm,
-            "_signer_role": (role or "founder").capitalize(),
+            "_signer_role": signer_role.capitalize(),
         }
 
         sign_result = sign_document(
@@ -694,13 +713,12 @@ def handle_signing(
             if session_id:
                 print(f"  {TEAL}Session:{RESET}  {session_id}")
 
-            # Save pending_id so finalize can find both parties' signatures
-            # In local mode (no role), create pending files for both roles
-            # since this process signs for the founder
-            if role:
-                pending_file = output_dir / f"{schema.negotiation_id}_{role}_pending.txt"
-            else:
-                pending_file = output_dir / f"{schema.negotiation_id}_founder_pending.txt"
+            # Save pending_id so finalize can find the signer's envelope.
+            # `signer_role` (set explicitly or derived from `role`/default
+            # "founder") determines which *_pending.txt file name is used
+            # — and therefore which signature block the handwritten sig
+            # embeds into on the executed PDF.
+            pending_file = output_dir / f"{schema.negotiation_id}_{signer_role}_pending.txt"
             pending_file.write_text(pending_id)
 
             approval_url = sign_result.get("approval_url")
